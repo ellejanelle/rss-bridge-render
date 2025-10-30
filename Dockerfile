@@ -1,19 +1,26 @@
 FROM php:8.2-cli
 
-# system deps for curl and SSL
-RUN apt-get update && apt-get install -y git unzip libcurl4-openssl-dev libssl-dev && rm -rf /var/lib/apt/lists/*
+# System deps
+RUN apt-get update && apt-get install -y \
+    git \
+    unzip \
+    libcurl4-openssl-dev \
+    libxml2-dev \
+ && rm -rf /var/lib/apt/lists/*
 
-# PHP extensions RSS-Bridge needs
-RUN docker-php-ext-install curl mbstring dom simplexml
+# PHP extensions required by RSS-Bridge
+RUN docker-php-ext-install -j$(nproc) curl dom simplexml mbstring
 
 WORKDIR /app
-RUN git clone https://github.com/RSS-Bridge/rss-bridge .
+# Shallow clone for faster builds
+RUN git clone --depth 1 https://github.com/RSS-Bridge/rss-bridge .
 
-# defaults. you can still override in Render
-ENV WHITELIST_ALLOW_ALL=1
-ENV CACHE=FileCache
-ENV CACHE_DIR=/app/cache
-ENV DEBUG=false
+# Defaults (you can still override these in Render → Environment)
+ENV WHITELIST_ALLOW_ALL=1 \
+    CACHE=FileCache \
+    CACHE_DIR=/app/cache \
+    DEBUG=false
 
+# Run a PHP built-in server on Render's PORT (or 10000 locally)
 EXPOSE 10000
 CMD php -S 0.0.0.0:${PORT:-10000} -t . index.php
